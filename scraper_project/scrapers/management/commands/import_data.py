@@ -10,17 +10,17 @@ from scrapers.models import (
 )
 import time
 from pathlib import Path
-import os
+from django.conf import settings
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-print(BASE_DIR)
+BASE_DIR = Path(settings.BASE_DIR)
+
 JSON_FILES = [
-    BASE_DIR / 'outputs' / 'dash'          / 'productos_dash_more.json',
-    BASE_DIR / 'outputs' / 'dexter'        / 'productos_dexter_20250523_145751_combinado.json',
-    BASE_DIR / 'outputs' / 'solodeportes'  / 'productos_solodeportes_20250522_225533_combinado.json',
-    BASE_DIR / 'outputs' / 'stock_center'  / 'productos_stockcenter_20250523_163238_combinado.json',
-    BASE_DIR / 'outputs' / 'solourbano'    / 'productos_solourbano_20250522_174102_combinado.json',
+    BASE_DIR / 'outputs' / 'dash'         / 'productos_dash_more.json',
+    BASE_DIR / 'outputs' / 'dexter'       / 'productos_dexter_20250523_145751_combinado.json',
+    BASE_DIR / 'outputs' / 'solodeportes' / 'productos_solodeportes_20250522_225533_combinado.json',
+    BASE_DIR / 'outputs' / 'stock_center' / 'productos_stockcenter_20250523_163238_combinado.json',
+    BASE_DIR / 'outputs' / 'solourbano'   / 'productos_solourbano_20250522_174102_combinado.json',
 ]
 
 
