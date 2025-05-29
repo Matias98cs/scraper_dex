@@ -37,10 +37,11 @@ def parse_decimal(s):
         return None
 
 class Command(BaseCommand):
-    help = 'Importa y cuenta productos y pricings nuevos por JSON, e inserta cuotas y talles'
+    help = 'Importa y cuenta productos y pricings nuevos por JSON'
 
     def handle(self, *args, **opts):
         self.stdout.write(f"CWD: {os.getcwd()}")
+
         otro_brand, _ = Brand.objects.get_or_create(name='otro')
         otro_cat, _   = Category.objects.get_or_create(name='otro')
         now = timezone.now()
@@ -75,44 +76,51 @@ class Command(BaseCommand):
                         continue
 
                     raw_brand = obj.get('marca','').strip()
-                    brand = Brand.objects.get_or_create(
-                        name=raw_brand.lower()
-                    )[0] if raw_brand else otro_brand
+                    brand = Brand.objects.get_or_create(name=raw_brand.lower())[0] if raw_brand else otro_brand
 
                     raw_cat = obj.get('categoria','').strip()
-                    category = Category.objects.get_or_create(
-                        name=raw_cat.lower()
-                    )[0] if raw_cat else otro_cat
+                    category = Category.objects.get_or_create(name=raw_cat.lower())[0] if raw_cat else otro_cat
 
                     raw_sku = obj.get('sku','').strip().upper()
                     sku = raw_sku if raw_sku and raw_sku!='N/A' else None
-                    lookup = {'sku':sku} if sku else {'link':obj.get('link','').strip()}
+                    lookup = {'sku': sku} if sku else {'link': obj.get('link','').strip()}
 
                     prod, was_created = Product.objects.get_or_create(
                         **lookup,
-                        defaults={'created_at':now, 'updated_at':now, 'brand':brand, 'category':category}
+                        defaults={'created_at': now, 'updated_at': now,
+                                  'brand': brand,    'category': category}
                     )
                     if was_created:
                         prod_created += 1
 
+                    prod.name          = obj.get('nombre','').strip()
+                    prod.brand         = brand
+                    prod.category      = category
+                    prod.product_class = obj.get('clase_de_producto','').strip()
+                    prod.model_code    = obj.get('modelo_id','').strip()
+                    prod.sku           = sku
+                    prod.image_url     = obj.get('imagen_url','').strip()
+                    prod.link          = obj.get('link','').strip()
+                    prod.updated_at    = now
+                    prod.save()
+
                     price_current = parse_decimal(obj.get('precio',''))
-                    if price_current is None:
-                        price_current = Decimal('0.00')
-                    env = obj.get('envio_gratis','')
-                    free_shipping = env if isinstance(env,bool) else str(env).lower() in ('sí','si','yes','true')
-                    pricing, pricing_new = Pricing.objects.update_or_create(
-                        product=prod, page=page,
-                        defaults={
-                            'price_current': price_current,
-                            'price_prev':    parse_decimal(obj.get('precio_anterior','')),
-                            'discount':      parse_decimal(obj.get('descuento','')),
-                            'free_shipping': free_shipping,
-                            'currency':      'ARS',
-                            'recorded_at':   now,
-                        }
-                    )
-                    if pricing_new or was_created:
-                        pricing_created += 1
+                    if price_current is not None:
+                        env = obj.get('envio_gratis','')
+                        free_shipping = env if isinstance(env,bool) else str(env).lower() in ('sí','si','yes','true')
+                        pricing, pricing_new = Pricing.objects.update_or_create(
+                            product=prod, page=page,
+                            defaults={
+                                'price_current': price_current,
+                                'price_prev':    parse_decimal(obj.get('precio_anterior','')),
+                                'discount':      parse_decimal(obj.get('descuento','')),
+                                'free_shipping': free_shipping,
+                                'currency':      'ARS',
+                                'recorded_at':   now,
+                            }
+                        )
+                        if pricing_new:
+                            pricing_created += 1
 
                     cuotas_txt = obj.get('cuotas','')
                     m = re.search(r'(\d+)', cuotas_txt)
@@ -138,9 +146,7 @@ class Command(BaseCommand):
                         pending_sizes.append(ProductSize(
                             product=prod, size=sz, available=0, country='AR'))
 
-                ProductSize.objects.bulk_create(
-                    pending_sizes, ignore_conflicts=True
-                )
+                ProductSize.objects.bulk_create(pending_sizes, ignore_conflicts=True)
 
             self.stdout.write(self.style.SUCCESS(
                 f'{path} → {prod_created} productos nuevos, {pricing_created} pricings nuevos.'
