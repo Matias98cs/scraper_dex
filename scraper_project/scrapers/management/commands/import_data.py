@@ -11,6 +11,7 @@ from scrapers.models import (
 import time
 from pathlib import Path
 from django.conf import settings
+import os
 
 
 BASE_DIR = Path(settings.BASE_DIR)
@@ -39,6 +40,7 @@ class Command(BaseCommand):
     help = 'Importa y cuenta productos y pricings nuevos por JSON, e inserta cuotas y talles'
 
     def handle(self, *args, **opts):
+        self.stdout.write(f"CWD: {os.getcwd()}")
         otro_brand, _ = Brand.objects.get_or_create(name='otro')
         otro_cat, _   = Category.objects.get_or_create(name='otro')
         now = timezone.now()
