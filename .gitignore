@@ -1,0 +1,27 @@
+# Sistema
+.DS_Store
+*/.DS_Store
+
+# Entornos virtuales
+.venv/
+env/
+venv/
+
+# Configuración sensible
+.env
+
+# Caché de Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Archivos de salida / logs
+outputs/
+
+# Archivos compilados / temporales
+*.log
+*.tmp
+
+# IDEs/editors
+.vscode/
+.idea/
