@@ -1,2 +1,0 @@
-[tool.nixpacks]
-start-command = "gunicorn scraper_project.wsgi --bind 0.0.0.0:$PORT"
