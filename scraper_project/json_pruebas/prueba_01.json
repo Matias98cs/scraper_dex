@@ -1,0 +1,666 @@
+[
+  {
+    "nombre": "REMERA PUMA BETTER ESSENTIALS HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 18.499,00",
+    "precio_anterior": "$ 36.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 6.166,33 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1528137-500-auto?v=638685004668300000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-better-essentials-moda-hombre-9623002/p",
+    "id_producto": "9623002",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [],
+    "no_disponible": [],
+    "modelo_id": "N/A",
+    "financiacion": []
+  },
+  {
+    "nombre": "REMERA PUMA BETTER ESSENTIALS HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 18.499,00",
+    "precio_anterior": "$ 36.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 6.166,33 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1532440-500-auto?v=638727263431400000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-better-essentials-moda-hombre-9623115/p",
+    "id_producto": "9623115",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [
+      "XS"
+    ],
+    "no_disponible": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "4XL"
+    ],
+    "modelo_id": "681574/68",
+    "financiacion": []
+  },
+  {
+    "nombre": "REMERA PUMA CLOUDSPUN SOFT BREATHABLE HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 27.749,00",
+    "precio_anterior": "$ 55.499,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 9.249,67 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1528637-500-auto?v=638689278450570000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-cloudspun-soft-breathable-entrenamiento-hombre-9623077/p",
+    "id_producto": "9623077",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S"
+    ],
+    "no_disponible": [
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "4XL"
+    ],
+    "modelo_id": "525711/27",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 27749.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 9249.67,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 4624.83,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "SHORT PUMA INDIVIDUALFINAL HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 29.499,00",
+    "precio_anterior": "$ 58.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 9.833,00 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1529862-500-auto?v=638696961987200000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/short-puma-individualfinal-entrenamiento-hombre-9623087/p",
+    "id_producto": "9623087",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "SHORT",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S"
+    ],
+    "no_disponible": [
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "XXXL",
+      "4XL"
+    ],
+    "modelo_id": "659584/01",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 29499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 9833.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 4916.5,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "OJOTAS PUMA LEADCAT 2.0 UNISEX",
+    "marca": "Puma",
+    "precio": "$ 29.999,00",
+    "precio_anterior": "$ 59.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 9.999,67 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1518160-500-auto?v=638627066201800000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/ojotas-puma-leadcat-2-0-moda-unisex-9612673/p",
+    "id_producto": "9612673",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Otros",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "OJOTAS",
+    "variante": "N/A",
+    "disponible": [
+      "34.5"
+    ],
+    "no_disponible": [
+      "35",
+      "36",
+      "36.5",
+      "37",
+      "38",
+      "39",
+      "39.5",
+      "40",
+      "41",
+      "41.5",
+      "42",
+      "43",
+      "43.5",
+      "44",
+      "45",
+      "37.5"
+    ],
+    "modelo_id": "402234/02",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 29999.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 9999.67,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 4999.83,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "REMERA PUMA MANCHESTER CITY FTBLCULTURE HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 28.249,00",
+    "precio_anterior": "$ 56.499,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 9.416,33 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1532530-500-auto?v=638727295892470000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-manchester-city-ftblculture-futbol-hombre-9623108/p",
+    "id_producto": "9623108",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [],
+    "no_disponible": [],
+    "modelo_id": "N/A",
+    "financiacion": []
+  },
+  {
+    "nombre": "REMERA PUMA FLEX CARGO HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 30.499,00",
+    "precio_anterior": "$ 60.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 10.166,33 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1519529-500-auto?v=638634748600930000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-flex-cargo-entrenamiento-hombre-9622849/p",
+    "id_producto": "9622849",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S",
+      "M"
+    ],
+    "no_disponible": [
+      "L",
+      "XL",
+      "XXL"
+    ],
+    "modelo_id": "525665/80",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 30499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 10166.33,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5083.17,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "SHORT OFICIAL ADIDAS RIVER PLATE ARQUERO 24/25 HOMBRE",
+    "marca": "Adidas Performance",
+    "precio": "$ 32.499,00",
+    "precio_anterior": "$ 64.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 10.833,00 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1515830-500-auto?v=638608830829270000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/short-oficial-adidas-river-plate-arquero-24-25-futbol-hombre-2663720/p",
+    "id_producto": "2663720",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "SHORT",
+    "variante": "N/A",
+    "disponible": [
+      "S",
+      "XL"
+    ],
+    "no_disponible": [
+      "XS",
+      "M",
+      "L",
+      "XXL",
+      "XXS",
+      "3XL",
+      "4XL"
+    ],
+    "modelo_id": "IS7470",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 32499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 10833.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5416.5,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "REMERA PUMA FLEX HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 30.499,00",
+    "precio_anterior": "$ 60.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 10.166,33 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1532507-500-auto?v=638727286959500000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-puma-flex-entrenamiento-hombre-9623106/p",
+    "id_producto": "9623106",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S",
+      "M",
+      "L"
+    ],
+    "no_disponible": [
+      "XL",
+      "XXL",
+      "4XL"
+    ],
+    "modelo_id": "525665/01",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 30499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 10166.33,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5083.17,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "SHORT ALTERNATIVO ADIDAS BOCA JUNIORS HOMBRE",
+    "marca": "Adidas Performance",
+    "precio": "$ 32.499,00",
+    "precio_anterior": "$ 64.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 10.833,00 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1538680-500-auto?v=638754996880900000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/short-alternativo-adidas-boca-juniors-futbol-hombre-2663864/p",
+    "id_producto": "2663864",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "SHORT",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "no_disponible": [
+      "XXL"
+    ],
+    "modelo_id": "JD4470",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 32499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 10833.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5416.5,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "CAMISETA ALTERNATIVA PUMA MANCHESTER CITY TRAINING HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 35.499,00",
+    "precio_anterior": "$ 70.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 11.833,00 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1528779-500-auto?v=638689546794200000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/camiseta-alternativa-puma-manchester-city-training-futbol-hombre-9623067/p",
+    "id_producto": "9623067",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "CAMISETA",
+    "variante": "N/A",
+    "disponible": [
+      "XS"
+    ],
+    "no_disponible": [
+      "S",
+      "M",
+      "L"
+    ],
+    "modelo_id": "777521/12",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 35499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 11833.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5916.5,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "SHORT PUMA ENERGY 7 STRETCH HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 35.999,00",
+    "precio_anterior": "$ 71.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 11.999,67 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1528322-500-auto?v=638688249405830000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/short-puma-energy-7-stretch-entrenamiento-hombre-9623044/p",
+    "id_producto": "9623044",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "SHORT",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S"
+    ],
+    "no_disponible": [
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "XXXL",
+      "4XL"
+    ],
+    "modelo_id": "525720/91",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 35999.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 11999.67,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 5999.83,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "SHORT PUMA ALWAYS ON 5 STRETCH HOMBRE",
+    "marca": "Puma",
+    "precio": "$ 37.499,00",
+    "precio_anterior": "$ 74.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 12.499,67 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1530905-500-auto?v=638705531798800000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/short-puma-always-on-5-stretch-entrenamiento-hombre-9623076/p",
+    "id_producto": "9623076",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "SHORT",
+    "variante": "N/A",
+    "disponible": [
+      "S",
+      "M"
+    ],
+    "no_disponible": [
+      "L",
+      "XL",
+      "XXL",
+      "XXXL",
+      "4XL"
+    ],
+    "modelo_id": "525726/69",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 37499.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 12499.67,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 6249.83,
+        "sin_interes": true
+      }
+    ]
+  },
+  {
+    "nombre": "REMERA ADIDAS RIVER PLATE HOMBRE",
+    "marca": "Adidas Performance",
+    "precio": "$ 39.999,00",
+    "precio_anterior": "$ 79.999,00",
+    "descuento": "-50%",
+    "cuotas": "3 cuotas de $ 13.333,00 sin interés",
+    "envio_gratis": "",
+    "imagen_url": "https://dash.vtexassets.com/arquivos/ids/1515453-500-auto?v=638603646672930000&width=500&height=auto&aspect=true",
+    "link": "https://www.dashdeportes.com.ar/remera-adidas-river-plate-futbol-hombre-2663684/p",
+    "id_producto": "2663684",
+    "sku": "N/A",
+    "categoria": "Hombre",
+    "clase_de_producto": "Indumentaria",
+    "tags": "N/A",
+    "talles": "N/A",
+    "nombre_pagina": "Dash",
+    "tipo_de_producto": "REMERA",
+    "variante": "N/A",
+    "disponible": [
+      "XS",
+      "S"
+    ],
+    "no_disponible": [
+      "XXS",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "3XL",
+      "4XL"
+    ],
+    "modelo_id": "IS5556",
+    "financiacion": [
+      {
+        "banco": "",
+        "num_cuotas": 1,
+        "precio_por_cuota": 39999.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "",
+        "num_cuotas": 3,
+        "precio_por_cuota": 13333.0,
+        "sin_interes": true
+      },
+      {
+        "banco": "Banco Santander",
+        "num_cuotas": 6,
+        "precio_por_cuota": 6666.5,
+        "sin_interes": true
+      }
+    ]
+  }
+]
