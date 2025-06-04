@@ -212,17 +212,17 @@ def worker(task_queue, driver_queue, resultados, lock, total, use_local):
             except Exception as ex_init:
                 logger.error(f"[{tname}] [{idx}/{total}] Error reinicializando driver: {ex_init}")
 
-            item["modelo_id"]      = item.get("modelo_id", "N/A")
-            item["disponible"]     = item.get("disponible", [])
-            item["no_disponible"]  = item.get("no_disponible", [])
-            item["financiacion"]   = item.get("financiacion", [])
+            item["modelo_id"] = item.get("modelo_id", "N/A")
+            item["disponible"] = item.get("disponible", [])
+            item["no_disponible"] = item.get("no_disponible", [])
+            item["financiacion"] = item.get("financiacion", [])
 
         except Exception as e:
             logger.error(f"[{tname}] [{idx}/{total}] Error inesperado: {e}")
-            item["modelo_id"]      = item.get("modelo_id", "N/A")
-            item["disponible"]     = item.get("disponible", [])
-            item["no_disponible"]  = item.get("no_disponible", [])
-            item["financiacion"]   = item.get("financiacion", [])
+            item["modelo_id"] = item.get("modelo_id", "N/A")
+            item["disponible"] = item.get("disponible", [])
+            item["no_disponible"] = item.get("no_disponible", [])
+            item["financiacion"] = item.get("financiacion", [])
 
         finally:
             if driver:
@@ -275,7 +275,7 @@ class Command(BaseCommand):
                 output_name = f"{output_name}.json"
         else:
             ahora = datetime.now()
-            fecha_hora = ahora.strftime("%d-%m-%Y-%H%M")
+            fecha_hora = ahora.strftime("%d-%m-%Y-%H%M%S")
             output_name = f"dash-{fecha_hora}.json"
 
         OUTPUT_PATH = JSON_DIR / output_name
@@ -287,6 +287,12 @@ class Command(BaseCommand):
             format="%(asctime)s [%(threadName)s] %(levelname)s %(message)s",
             datefmt="%H:%M:%S"
         )
+
+        inicio_dt = datetime.now()
+        inicio_str = inicio_dt.strftime("%d-%m-%Y %H:%M:%S")
+        start_time = time.time()
+
+        logger.info(f"Fecha/hora de inicio: {inicio_str}")
 
         try:
             with open(JSON_PATH, encoding="utf-8") as f:
@@ -348,12 +354,26 @@ class Command(BaseCommand):
             with open(OUTPUT_PATH, 'w', encoding='utf-8') as out_f:
                 json.dump(resultados, out_f, ensure_ascii=False, indent=2)
 
+            fin_dt = datetime.now()
+            fin_str = fin_dt.strftime("%d-%m-%Y %H:%M:%S")
+            end_time = time.time()
+            duration = end_time - start_time
+            duration_str = time.strftime("%H:%M:%S", time.gmtime(duration))
+
+            logger.info(f"Fecha/hora de finalización: {fin_str}")
+            logger.info(f"Duración total: {duration_str}")
             logger.info(f"Resultados guardados en {OUTPUT_PATH}")
             logger.info(f"Hilos activos al final: {threading.active_count()}")
 
-            send_alert_message(f"✅ Scraper completado: {len(resultados)}/{total} productos procesados. Archivo: {output_name}")
+            send_alert_message(
+                f"✅ Scraper completado: {len(resultados)}/{total} productos procesados.\n"
+                f"Archivo: {output_name}\n"
+                f"Inicio: {inicio_str}\n"
+                f"Fin: {fin_str}\n"
+                f"Duración: {duration_str}"
+            )
 
         except Exception as e:
             logger.error(f"Fallo general del scraper: {e}")
-            send_alert_message(f"❌ Scraper producto por producto falló con error: {e}")
+            send_alert_message(f"❌ Scraper producto por producto falló con error: {e}\nInicio: {inicio_str}")
             raise
