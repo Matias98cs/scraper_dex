@@ -1,0 +1,13 @@
+[tool.nixpacks]
+start-command = "gunicorn scraper_project.wsgi:application --bind 0.0.0.0:$PORT"
+
+[tool.nixpacks.packages]
+python               = "*"
+chromium             = "*"
+chromium-chromedriver= "*"
+
+[tool.nixpacks.phases.chromium]
+dependsOn = ["install"]
+cmds = [
+  "playwright install --with-deps chromium"
+]
