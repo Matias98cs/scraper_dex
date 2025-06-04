@@ -2,20 +2,16 @@
 start-command = "gunicorn scraper_project.wsgi:application --bind 0.0.0.0:$PORT"
 
 [tool.nixpacks.packages]
-chromium = "*"
-chromium-chromedriver = "*"
+python = "*"
+# if you need chromium for other reasons, you can also install it via Nixpacks:
+chromium               = "*"
+chromium-chromedriver  = "*"
 
-libX11 = "*"
-libXcomposite = "*"
-libXcursor = "*"
-libXdamage = "*"
-libXext = "*"
-libXi = "*"
-libXtst = "*"
-libxrandr = "*"
-libXrender = "*"
-libxss = "*"
-nss = "*"
-fontconfig = "*"
-gtk3 = "*"
-dbus-glib = "*"
+# …any other native libs you need can go here (e.g. libX11, fontconfig, etc.)
+
+# Now, a custom “chromium” phase that runs playwright’s installer:
+[tool.nixpacks.phases.chromium]
+dependsOn = ["install"]
+cmds = [
+  "playwright install --with-deps chromium"
+]
