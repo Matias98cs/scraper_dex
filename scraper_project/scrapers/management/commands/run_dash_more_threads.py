@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, JavascriptException
 from pathlib import Path
 from django.conf import settings
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,14 @@ def initialize_driver(headless):
     chrome_opts.add_argument("--disable-gpu")
     chrome_opts.add_argument("--no-sandbox")
     chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
-    driver = webdriver.Chrome(options=chrome_opts)
+    
+    chrome_binary = "/usr/bin/chromium"
+    driver_binary = "/usr/bin/chromedriver"
+
+    chrome_opts.binary_location = chrome_binary
+    service = ChromeService(executable_path=driver_binary)
+
+    driver = webdriver.Chrome(service=service, options=chrome_opts)
     driver.implicitly_wait(1)
     return driver
 
