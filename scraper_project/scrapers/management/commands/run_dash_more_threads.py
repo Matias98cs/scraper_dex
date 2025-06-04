@@ -2,7 +2,9 @@ import json
 import re
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import resource
+from queue import Queue, Empty
 from django.core.management.base import BaseCommand
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -10,13 +12,31 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import threading
+from selenium.common.exceptions import TimeoutException, JavascriptException
 
 logger = logging.getLogger(__name__)
 
 JSON_PATH   = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_20250530_124755_combinado.json"
-OUTPUT_JSON = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_20250530_124755_more_threads.json"
+OUTPUT_JSON = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_more_threads_2.json"
 MAX_THREADS = 4
+
+def scroll_page(driver):
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+        scroll_height = driver.execute_script("return document.body.scrollHeight")
+        if not scroll_height:
+            logger.warning("No se obtuvo scrollHeight; saltando scroll.")
+            return
+
+        for pct in range(0, 101, 15):
+            pos = (pct / 100) * scroll_height
+            driver.execute_script(f"window.scrollTo(0, {pos});")
+            time.sleep(0.2)
+    except (TimeoutException, JavascriptException) as e:
+        logger.warning(f"Error al desplazar la página: {e}")
+
 
 def extraer_modelo_id(soup):
     cell = soup.find("td", {"data-specification": "Proveedor"})
@@ -32,6 +52,7 @@ def extraer_modelo_id(soup):
             return m.group(1)
     return "N/A"
 
+
 def extraer_talles(soup):
     disponibles, no_disponibles = [], []
     items_btn = soup.select(".vtex-store-components-3-x-skuSelectorItem")
@@ -45,6 +66,7 @@ def extraer_talles(soup):
         else:
             disponibles.append(talla)
     return disponibles, no_disponibles
+
 
 def extraer_cuotas_bancos(soup):
     resultados = []
@@ -91,77 +113,104 @@ def extraer_cuotas_bancos(soup):
 
     return resultados
 
-def procesar_item(item, headless, idx, total, wait_time=10):
+
+def initialize_driver(headless):
     chrome_opts = Options()
     if headless:
         chrome_opts.add_argument("--headless")
+    chrome_opts.add_argument("--window-size=1920,1080")
     chrome_opts.add_argument("--disable-gpu")
     chrome_opts.add_argument("--no-sandbox")
     chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
-
     driver = webdriver.Chrome(options=chrome_opts)
     driver.implicitly_wait(1)
+    return driver
 
-    url = item.get("link")
-    try:
-        logger.info(f"[{idx}/{total}] Abriendo {url}")
-        driver.get(url)
+
+def worker(task_queue, driver_queue, resultados, lock, headless, total):
+    tname = threading.current_thread().name
+
+    while True:
+        try:
+            idx, item = task_queue.get_nowait()
+        except Empty:
+            return
+
+        mem_inicial = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        logger.info(f"[{tname}] Uso de memoria al iniciar tarea para item {idx}/{total} (KB): {mem_inicial}")
 
         try:
-            WebDriverWait(driver, wait_time).until(
-                lambda d: d.execute_script("return document.readyState") == "complete"
-            )
-        except:
-            pass
+            driver = driver_queue.get()
+            url = item.get("link")
+            logger.info(f"[{tname}] [{idx}/{total}] Abriendo {url}")
+            driver.get(url)
 
-        total_altura = driver.execute_script("return document.body.scrollHeight")
-        altura_actual = 0
-        paso = max(int(total_altura / 5), 500)
-        while altura_actual < total_altura:
-            altura_actual += paso
-            driver.execute_script(f"window.scrollTo(0, {altura_actual});")
-            time.sleep(0.5)
-            total_altura = driver.execute_script("return document.body.scrollHeight")
+            try:
+                WebDriverWait(driver, 10).until(
+                    lambda d: d.execute_script("return document.readyState") == "complete"
+                )
+            except TimeoutException:
+                logger.warning(f"[{tname}] [{idx}/{total}] document.readyState no llegó a 'complete' en 10s")
 
-        time.sleep(1)
+            scroll_page(driver)
 
-        try:
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
-            )
-        except:
-            pass
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
+                )
+            except TimeoutException:
+                logger.warning(f"[{tname}] [{idx}/{total}] El widget de cuotas no apareció en 10s")
 
-        soup = BeautifulSoup(driver.page_source, "html.parser")
+            time.sleep(1)
+            soup = BeautifulSoup(driver.page_source, "html.parser")
 
-        modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
-        try:
-            modelo       = extraer_modelo_id(soup)
-            disp, nodisp = extraer_talles(soup)
-            cuotas_bancos = extraer_cuotas_bancos(soup)
+            modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
+            try:
+                modelo       = extraer_modelo_id(soup)
+                disp, nodisp = extraer_talles(soup)
+                cuotas_bancos = extraer_cuotas_bancos(soup)
+            except Exception as e:
+                logger.warning(f"[{tname}] [{idx}/{total}] Error al extraer talles/cuotas: {e}")
+
+            num_wrappers = len(soup.select("div.dash-theme-6-x-wrapperModalCC"))
+            logger.info(f"[{tname}] [{idx}/{total}] Encontré {num_wrappers} wrappers de cuotas en {url}")
+
+            item["modelo_id"]      = modelo
+            item["disponible"]     = disp
+            item["no_disponible"]  = nodisp
+            item["financiacion"]   = cuotas_bancos
+
+            logger.info(f"[{tname}] [{idx}/{total}]   → Modelo: {modelo}")
+            logger.info(f"[{tname}] [{idx}/{total}]   → Disponibles: {disp}")
+            logger.info(f"[{tname}] [{idx}/{total}]   → No disponibles: {nodisp}")
+            logger.info(f"[{tname}] [{idx}/{total}]   → Cuotas/Bancos: {cuotas_bancos}")
+            logger.info(f"[{tname}] ----------------------------------------")
+
+            mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            logger.info(f"[{tname}] Uso de memoria al finalizar item {idx} (KB): {mem_final}")
+
         except Exception as e:
-            logger.warning(f"[{idx}/{total}] Error al extraer datos de talles/cuotas para {url}: {e}")
+            logger.error(f"[{tname}] [{idx}/{total}] Error procesando {url}: {e}")
+            item["modelo_id"]      = item.get("modelo_id", "N/A")
+            item["disponible"]     = []
+            item["no_disponible"]  = []
+            item["financiacion"]   = []
+        finally:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+            new_driver = initialize_driver(headless)
+            driver_queue.put(new_driver)
+            with lock:
+                resultados.append(item)
+            task_queue.task_done()
 
-        item["modelo_id"]      = modelo
-        item["disponible"]     = disp
-        item["no_disponible"]  = nodisp
-        item["financiacion"]   = cuotas_bancos
+        logger.info(f"[{tname}] Terminado procesamiento de item {idx}/{total}")
 
-        logger.info(f"[{idx}/{total}]   → Modelo: {modelo}")
-        logger.info(f"[{idx}/{total}]   → Disponibles: {disp}")
-        logger.info(f"[{idx}/{total}]   → No disponibles: {nodisp}")
-        logger.info(f"[{idx}/{total}]   → Cuotas/Bancos: {cuotas_bancos}")
-        logger.info("----------------------------------------")
-
-    except Exception as e:
-        logger.error(f"[{idx}/{total}] Error procesando {url}: {e}")
-    finally:
-        driver.quit()
-
-    return item
 
 class Command(BaseCommand):
-    help = 'Scraper Dash (paralelizado con ThreadPoolExecutor)'
+    help = 'Scraper Dash con pool de WebDrivers y threading manual'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -182,23 +231,41 @@ class Command(BaseCommand):
         with open(JSON_PATH, encoding="utf-8") as f:
             items = json.load(f)
         total = len(items)
+        logger.info(f"Hilos activos al inicio: {threading.active_count()}")
         logger.info(f"Cargados {total} productos desde {JSON_PATH}")
-        logger.info(f"Threads activos al inicio: {threading.active_count()}")
+
+        driver_queue = Queue(maxsize=MAX_THREADS)
+        for _ in range(MAX_THREADS):
+            driver_queue.put(initialize_driver(headless))
+
+        task_queue = Queue()
+        for idx, item in enumerate(items, start=1):
+            task_queue.put((idx, item))
 
         resultados = []
-        futures = []
+        lock = threading.Lock()
 
-        with ThreadPoolExecutor(max_workers=MAX_THREADS, thread_name_prefix="ScraperDash") as executor:
-            for idx, item in enumerate(items, start=1):
-                futures.append(
-                    executor.submit(procesar_item, item, headless, idx, total)
-                )
+        threads = []
+        for i in range(MAX_THREADS):
+            t = threading.Thread(
+                target=worker,
+                name=f"ScraperDash_{i}",
+                args=(task_queue, driver_queue, resultados, lock, headless, total)
+            )
+            threads.append(t)
+            t.start()
 
-            for fut in as_completed(futures):
-                resultados.append(fut.result())
-                logger.info(f"Hilos activos ahora: {threading.active_count()}")
+        task_queue.join()
+
+        while not driver_queue.empty():
+            try:
+                d = driver_queue.get_nowait()
+                d.quit()
+            except Empty:
+                break
 
         with open(OUTPUT_JSON, 'w', encoding='utf-8') as out_f:
             json.dump(resultados, out_f, ensure_ascii=False, indent=2)
+
         logger.info(f"Resultados guardados en {OUTPUT_JSON}")
-        logger.info(f"Threads activos al final: {threading.active_count()}")
+        logger.info(f"Hilos activos al final: {threading.active_count()}")

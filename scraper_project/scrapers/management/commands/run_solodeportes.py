@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
 
 class SoloDeportesScraper(BaseScraper):
-    def __init__(self, wait_time=5):
+    def __init__(self, wait_time=4):
         super().__init__(name="solodeportes")
         self.wait_time = wait_time
         self.secciones = {
@@ -72,44 +72,54 @@ class SoloDeportesScraper(BaseScraper):
 
         self.close_browser()
 
-    def scrapear_seccion(self, url, seccion):
-        self.driver.get(url)
-        WebDriverWait(self.driver, self.wait_time).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "li.item.product.product-item"))
-        )
-
+    def scrapear_seccion(self, url_base, seccion):
+        """
+        Recorre página por página con ?p=1, ?p=2, ...
+        Hasta que ya no se agreguen SKUs nuevos.
+        """
+        pagina = 1
         productos_totales = []
         seen = set()
-        prev_count = 0
 
-        # Intentamos scroll en window
         while True:
-            # scrolleamos al sentinel
+            if pagina == 1:
+                url = url_base
+            else:
+                url = f"{url_base}?p={pagina}"
+
+            self.logger.info(f"  → Abriendo página {pagina} de {seccion}: {url}")
+            self.driver.get(url)
+
             try:
-                sentinel = WebDriverWait(self.driver, self.wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.footer > div.page-content > ul.footer-cols"))
+                WebDriverWait(self.driver, self.wait_time).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "li.item.product.product-item"))
                 )
-                self.driver.execute_script("arguments[0].scrollIntoView(false);", sentinel)
             except TimeoutException:
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-            time.sleep(self.wait_time)
-
-            current_count = len(self.driver.find_elements(By.CSS_SELECTOR, "li.item.product.product-item"))
-            if current_count == prev_count:
+                self.logger.warning(f"    → Timeout esperando productos en página {pagina}.")
                 break
-            prev_count = current_count
 
-        # parsear únicos
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
-        for prod in soup.select("li.item.product.product-item"):
-            parsed = self.parsear_producto(prod, seccion)
-            key = parsed.get("sku") or parsed.get("link")
-            if parsed and key not in seen:
-                seen.add(key)
-                productos_totales.append(parsed)
+            soup = BeautifulSoup(self.driver.page_source, "html.parser")
+            nuevos_en_esta_pagina = 0
+
+            for prod in soup.select("li.item.product.product-item"):
+                parsed = self.parsear_producto(prod, seccion)
+                if not parsed:
+                    continue
+                key = parsed.get("sku") or parsed.get("link")
+                if key and key not in seen:
+                    seen.add(key)
+                    productos_totales.append(parsed)
+                    nuevos_en_esta_pagina += 1
+
+            self.logger.info(f"    → Página {pagina}: se agregaron {nuevos_en_esta_pagina} productos nuevos.")
+
+            if nuevos_en_esta_pagina == 0:
+                break
+
+            pagina += 1
 
         return productos_totales
+    
     def parsear_producto(self, producto, seccion):
         try:
             nombre_elem = producto.select_one("p.product-item-name")
@@ -127,17 +137,25 @@ class SoloDeportesScraper(BaseScraper):
             brand = producto.select_one("div.brand-container img.brand")
             marca = brand.get("alt", "N/A").strip() if brand else "N/A"
 
-            precio_elem = producto.select_one("div.price-box span.price")
-            precio = precio_elem.text.strip() if precio_elem else "N/A"
-            sin_imp_elem = producto.select_one("span.tax-display div:nth-child(2)")
-            precio_anterior = sin_imp_elem.text.strip() if sin_imp_elem else "N/A"
+            precio_elem = producto.select_one("span.special-price span.price")
+            if precio_elem:
+                precio = precio_elem.text.strip()
+            else:
+                precio_elem = producto.select_one("div.price-box span.price")
+                precio = precio_elem.text.strip() if precio_elem else "N/A"
 
+            old_price_elem = producto.select_one("span.old-price span.price")
+            precio_anterior = old_price_elem.text.strip() if old_price_elem else "N/A"
+
+            descuento_elem = producto.select_one("span.quotes-pdp")
+            descuento = descuento_elem.text.strip() if descuento_elem else "N/A"
+            
             return {
                 "nombre": nombre,
                 "marca": marca,
                 "precio": precio,
                 "precio_anterior": precio_anterior,
-                "descuento": "N/A",
+                "descuento": descuento,
                 "cuotas": "N/A",
                 "envio_gratis": False,
                 "imagen_url": imagen_url,

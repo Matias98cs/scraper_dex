@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--wait', type=int, default=5,
-            help='Timeout máximo de espera entre páginas en segundos'
+            help='Timeout máximo de espera tras cada carga'
         )
 
     def handle(self, *args, **options):
@@ -38,11 +38,12 @@ class Command(BaseCommand):
 
 
 class SoloUrbanoScraper(BaseScraper):
-    def __init__(self, wait_time=5):
+    def __init__(self, wait_time=4):
         super().__init__(name="solourbano")
         self.wait_time = wait_time
+        # Ahora incluimos "hombre" como sección y usaremos ?p=N para paginar
         self.secciones = {
-            # "Hombre":     "https://www.solodeportes.com.ar/solourbano/hombre.html",
+            "Hombre":     "https://www.solodeportes.com.ar/solourbano/hombre.html",
             "Mujer":      "https://www.solodeportes.com.ar/solourbano/dama.html",
             "Niños":      "https://www.solodeportes.com.ar/solourbano/ninos.html",
             "Accesorios": "https://www.solodeportes.com.ar/solourbano/accesorios.html",
@@ -75,35 +76,56 @@ class SoloUrbanoScraper(BaseScraper):
 
         self.close_browser()
 
-    def scrapear_seccion(self, url, seccion):
-        # 1) Arrancar en la URL y esperar el primer lote
-        self.driver.get(url)
-        WebDriverWait(self.driver, self.wait_time).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "li.item.product.product-item"))
-        )
+    def scrapear_seccion(self, url_base, seccion):
+        pagina = 1
+        todos_productos = []
+        seen = set()
 
-        # 2) Scroll infinito hasta que aparezca el “sentinel” de fin de lista
         while True:
-            # Scroll al final de la página
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            # Esperamos un ratito para que cargue
-            time.sleep(self.wait_time)
-            # Si ya apareció el mensaje “Haz alcanzado el final de la lista.”, rompemos
-            if self.driver.find_elements(By.CSS_SELECTOR, "div.ias-noneleft"):
+            if pagina == 1:
+                url = url_base
+            else:
+                url = f"{url_base}?p={pagina}"
+
+            self.logger.info(f"  → Abriendo página {pagina}: {url}")
+            self.driver.get(url)
+
+            try:
+                WebDriverWait(self.driver, self.wait_time).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "li.item.product.product-item"))
+                )
+            except TimeoutException:
+                self.logger.info(f"    * No se encontraron productos en página {pagina}. Deteniendo paginación.")
                 break
 
-        # 3) Parsear todos los productos únicos del DOM acumulado
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
-        productos_totales = []
-        seen = set()
-        for prod in soup.select("li.item.product.product-item"):
-            parsed = self.parsear_producto(prod, seccion)
-            key = parsed.get("sku") or parsed.get("link")
-            if parsed and key not in seen:
-                seen.add(key)
-                productos_totales.append(parsed)
+            total_altura = self.driver.execute_script("return document.body.scrollHeight")
+            altura_actual = 0
+            paso = max(int(total_altura / 5), 200)
+            while altura_actual < total_altura:
+                altura_actual += paso
+                self.driver.execute_script(f"window.scrollTo(0, {altura_actual});")
+                time.sleep(0.5)
+                total_altura = self.driver.execute_script("return document.body.scrollHeight")
+            time.sleep(1)
 
-        return productos_totales
+            soup = BeautifulSoup(self.driver.page_source, "html.parser")
+            elementos = soup.select("li.item.product.product-item")
+            if not elementos:
+                self.logger.info(f"    * Lista vacía en página {pagina}. Deteniendo paginación.")
+                break
+
+            for prod in elementos:
+                parsed = self.parsear_producto(prod, seccion)
+                if not parsed:
+                    continue
+                key = parsed.get("sku") or parsed.get("link")
+                if key not in seen:
+                    seen.add(key)
+                    todos_productos.append(parsed)
+
+            pagina += 1
+
+        return todos_productos
 
     def parsear_producto(self, producto, seccion):
         try:
@@ -127,14 +149,18 @@ class SoloUrbanoScraper(BaseScraper):
             brand = producto.select_one("div.brand-container img.brand")
             marca = brand.get("alt", "N/A").strip() if brand else "N/A"
 
-            precio_elem = producto.select_one("span.special-price span.price")
-            precio = precio_elem.text.strip() if precio_elem else "N/A"
+            sp_elem = producto.select_one("div.price-box span.special-price span.price")
+            if sp_elem:
+                precio = sp_elem.get_text(strip=True)
+                old_elem = producto.select_one("div.price-box span.old-price span.price")
+                precio_anterior = old_elem.get_text(strip=True) if old_elem else "N/A"
+            else:
+                normal_elem = producto.select_one("div.price-box span.price")
+                precio = normal_elem.get_text(strip=True) if normal_elem else "N/A"
+                precio_anterior = "N/A"
 
-            old_price_elem = producto.select_one("span.old-price span.price")
-            precio_anterior = old_price_elem.text.strip() if old_price_elem else "N/A"
-
-            descuento_elem = producto.select_one("span.quotes-pdp")
-            descuento = descuento_elem.text.strip() if descuento_elem else "N/A"
+            descuento_elem = producto.select_one("div.price-box span.quotes-pdp")
+            descuento = descuento_elem.get_text(strip=True) if descuento_elem else "N/A"
 
             return {
                 "nombre": nombre,
