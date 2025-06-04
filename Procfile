@@ -1,1 +1,0 @@
-web: python manage.py collectstatic && gunicorn scraper_project.scraper_project.wsgi
