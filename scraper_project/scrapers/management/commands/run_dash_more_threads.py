@@ -17,6 +17,7 @@ from pathlib import Path
 from django.conf import settings
 from selenium.webdriver.chrome.service import Service as ChromeService
 import shutil
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -126,27 +127,19 @@ def extraer_cuotas_bancos(soup):
     return resultados
 
 
-def initialize_driver(headless):
-    opts = Options()
-    if headless:
-        opts.add_argument("--headless=new")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--window-size=1920,1080")
-    opts.add_argument("--blink-settings=imagesEnabled=false")
+def initialize_driver():
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.set_capability('browserless:token', os.environ['BROWSER_TOKEN'])
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
 
-    chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
-    if not chromium_path:
-        raise RuntimeError("No se encontró 'chromium' en PATH; verifica tu .nixpacks.toml")
-    opts.binary_location = chromium_path
-
-    chromedriver_path = shutil.which("chromedriver")
-    if not chromedriver_path:
-        raise RuntimeError("No se encontró 'chromedriver' en PATH; verifica tu .nixpacks.toml")
-    service = ChromeService(executable_path=chromedriver_path)
-
-    driver = webdriver.Chrome(service=service, options=opts)
+    driver = webdriver.Remote(
+        command_executor=os.environ['BROWSER_WEBDRIVER_ENDPOINT'],
+        options=chrome_options
+    )
     driver.implicitly_wait(1)
     return driver
 
