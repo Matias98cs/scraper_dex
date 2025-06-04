@@ -131,20 +131,27 @@ def initialize_driver(headless):
     if headless:
         chrome_opts.add_argument("--headless=new")
     chrome_opts.add_argument("--no-sandbox")
-    chrome_opts.add_argument("--disable-gpu")
     chrome_opts.add_argument("--disable-dev-shm-usage")
+    chrome_opts.add_argument("--disable-gpu")
     chrome_opts.add_argument("--window-size=1920,1080")
     chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
 
-    chrome_path = shutil.which("chromium") or shutil.which("chromium-browser")
-    if chrome_path:
-        chrome_opts.binary_location = chrome_path
+    # Indicar explícitamente el Chromium instalado por Nixpacks
+    chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
+    if chromium_path:
+        chrome_opts.binary_location = chromium_path
 
-    service = ChromeService()
+    # Apuntar al chromedriver que Nixpacks puso en PATH
+    chromedriver_path = shutil.which("chromedriver")
+    if chromedriver_path:
+        service = ChromeService(executable_path=chromedriver_path)
+    else:
+        service = ChromeService()
 
     driver = webdriver.Chrome(service=service, options=chrome_opts)
     driver.implicitly_wait(1)
     return driver
+
 
 
 def worker(task_queue, driver_queue, resultados, lock, headless, total):
