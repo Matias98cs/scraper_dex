@@ -1,12 +1,10 @@
 [tool.nixpacks]
 start-command = "gunicorn scraper_project.wsgi:application --bind 0.0.0.0:$PORT"
 
-[packages]
-# El navegador Chromium y el driver
+[tool.nixpacks.packages]
 chromium = "*"
 chromium-chromedriver = "*"
 
-# Paquetes nativos que Chromium y ChromeDriver requieren
 libX11 = "*"
 libXcomposite = "*"
 libXcursor = "*"
