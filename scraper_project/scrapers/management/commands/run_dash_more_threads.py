@@ -16,6 +16,7 @@ from selenium.common.exceptions import TimeoutException, JavascriptException
 from pathlib import Path
 from django.conf import settings
 from selenium.webdriver.chrome.service import Service as ChromeService
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -128,17 +129,18 @@ def extraer_cuotas_bancos(soup):
 def initialize_driver(headless):
     chrome_opts = Options()
     if headless:
-        chrome_opts.add_argument("--headless")
-    chrome_opts.add_argument("--window-size=1920,1080")
-    chrome_opts.add_argument("--disable-gpu")
+        chrome_opts.add_argument("--headless=new")
     chrome_opts.add_argument("--no-sandbox")
+    chrome_opts.add_argument("--disable-gpu")
+    chrome_opts.add_argument("--disable-dev-shm-usage")
+    chrome_opts.add_argument("--window-size=1920,1080")
     chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
-    
-    chrome_binary = "/usr/bin/chromium"
-    driver_binary = "/usr/bin/chromedriver"
 
-    chrome_opts.binary_location = chrome_binary
-    service = ChromeService(executable_path=driver_binary)
+    chrome_path = shutil.which("chromium") or shutil.which("chromium-browser")
+    if chrome_path:
+        chrome_opts.binary_location = chrome_path
+
+    service = ChromeService()
 
     driver = webdriver.Chrome(service=service, options=chrome_opts)
     driver.implicitly_wait(1)
