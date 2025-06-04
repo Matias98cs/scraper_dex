@@ -4,6 +4,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+import os
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
@@ -51,3 +55,34 @@ def send_alert_message(message):
 
     except SlackApiError as e:
         print(f"❌ Error al enviar alerta a Slack: {e.response['error']}")
+
+
+def initialize_driver_remote():
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.set_capability('browserless:token', os.environ['BROWSER_TOKEN'])
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+
+    driver = webdriver.Remote(
+        command_executor=os.environ['BROWSER_WEBDRIVER_ENDPOINT'],
+        options=chrome_options
+    )
+    driver.implicitly_wait(1)
+    return driver
+
+def initialize_driver_local():
+    service = Service(ChromeDriverManager().install())
+    options = webdriver.ChromeOptions()
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.implicitly_wait(1)
+    return driver

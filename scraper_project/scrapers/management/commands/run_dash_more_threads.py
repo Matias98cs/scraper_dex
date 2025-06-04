@@ -15,17 +15,11 @@ from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, JavascriptException
 from pathlib import Path
 from django.conf import settings
-from selenium.webdriver.chrome.service import Service as ChromeService
-import shutil
 import os
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(settings.BASE_DIR)
-
-# JSON_PATH   = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_20250530_124755_combinado.json"
-# OUTPUT_JSON = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_more_threads_2.json"
-
 JSON_DIR = BASE_DIR / "json_pruebas"
 
 JSON_PATH   = JSON_DIR / "productos_dash_20250530_124755_combinado.json"
@@ -50,13 +44,14 @@ def scroll_page(driver):
     except (TimeoutException, JavascriptException) as e:
         logger.warning(f"Error al desplazar la página: {e}")
 
-
 def extraer_modelo_id(soup):
+    # Primera opción: buscar en tabla con data-specification="Proveedor"
     cell = soup.find("td", {"data-specification": "Proveedor"})
     if cell:
         value = cell.find_next_sibling("td")
         if value:
             return value.get_text(strip=True)
+    # Si no, intentar extraer desde un div con descripción
     desc = soup.select_one("div.dash-theme-6-x-DescripcionProd div")
     if desc:
         text = desc.get_text(separator=" ", strip=True)
@@ -64,7 +59,6 @@ def extraer_modelo_id(soup):
         if m:
             return m.group(1)
     return "N/A"
-
 
 def extraer_talles(soup):
     disponibles, no_disponibles = [], []
@@ -79,7 +73,6 @@ def extraer_talles(soup):
         else:
             disponibles.append(talla)
     return disponibles, no_disponibles
-
 
 def extraer_cuotas_bancos(soup):
     resultados = []
@@ -126,7 +119,6 @@ def extraer_cuotas_bancos(soup):
 
     return resultados
 
-
 def initialize_driver():
     chrome_options = webdriver.ChromeOptions()
     chrome_options.set_capability('browserless:token', os.environ['BROWSER_TOKEN'])
@@ -143,9 +135,7 @@ def initialize_driver():
     driver.implicitly_wait(1)
     return driver
 
-
-
-def worker(task_queue, driver_queue, resultados, lock, headless, total):
+def worker(task_queue, driver_queue, resultados, lock, total):
     tname = threading.current_thread().name
 
     while True:
@@ -159,7 +149,7 @@ def worker(task_queue, driver_queue, resultados, lock, headless, total):
 
         try:
             driver = driver_queue.get()
-            url = item.get("link")
+            url = item.get("link", "")
             logger.info(f"[{tname}] [{idx}/{total}] Abriendo {url}")
             driver.get(url)
 
@@ -210,42 +200,40 @@ def worker(task_queue, driver_queue, resultados, lock, headless, total):
         except Exception as e:
             logger.error(f"[{tname}] [{idx}/{total}] Error procesando {url}: {e}")
             item["modelo_id"]      = item.get("modelo_id", "N/A")
-            item["disponible"]     = []
-            item["no_disponible"]  = []
-            item["financiacion"]   = []
+            item["disponible"]     = item.get("disponible", [])
+            item["no_disponible"]  = item.get("no_disponible", [])
+            item["financiacion"]   = item.get("financiacion", [])
+
         finally:
             try:
-                driver.quit()
+                driver_queue.put(driver)
             except Exception:
                 pass
-            new_driver = initialize_driver()
-            driver_queue.put(new_driver)
+
             with lock:
                 resultados.append(item)
+
             task_queue.task_done()
-
-        logger.info(f"[{tname}] Terminado procesamiento de item {idx}/{total}")
-
+            logger.info(f"[{tname}] Terminado procesamiento de item {idx}/{total}")
 
 class Command(BaseCommand):
-    help = 'Scraper Dash con pool de WebDrivers y threading manual'
+    help = 'Scraper Dash con pool de WebDrivers y threading optimizado'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--headless',
             action='store_true',
-            help='Ejecutar Chrome en modo headless'
+            help='(Ignorado) - el driver siempre corre en headless'
         )
 
     def handle(self, *args, **options):
-        headless = options['headless']
-
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s [%(threadName)s] %(levelname)s %(message)s",
             datefmt="%H:%M:%S"
         )
 
+        # Cargo la lista de items desde JSON
         with open(JSON_PATH, encoding="utf-8") as f:
             items = json.load(f)
         total = len(items)
@@ -267,8 +255,8 @@ class Command(BaseCommand):
         for i in range(MAX_THREADS):
             t = threading.Thread(
                 target=worker,
-                name=f"ScraperDash_{i}",
-                args=(task_queue, driver_queue, resultados, lock, headless, total)
+                name=f"ScraperDash_{i+1}",
+                args=(task_queue, driver_queue, resultados, lock, total)
             )
             threads.append(t)
             t.start()
@@ -281,6 +269,8 @@ class Command(BaseCommand):
                 d.quit()
             except Empty:
                 break
+            except Exception:
+                pass
 
         with open(OUTPUT_JSON, 'w', encoding='utf-8') as out_f:
             json.dump(resultados, out_f, ensure_ascii=False, indent=2)
