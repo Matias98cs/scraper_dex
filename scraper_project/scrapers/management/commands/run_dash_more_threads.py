@@ -218,7 +218,7 @@ def worker(task_queue, driver_queue, resultados, lock, headless, total):
                 driver.quit()
             except Exception:
                 pass
-            new_driver = initialize_driver(headless)
+            new_driver = initialize_driver()
             driver_queue.put(new_driver)
             with lock:
                 resultados.append(item)
@@ -254,7 +254,7 @@ class Command(BaseCommand):
 
         driver_queue = Queue(maxsize=MAX_THREADS)
         for _ in range(MAX_THREADS):
-            driver_queue.put(initialize_driver(headless))
+            driver_queue.put(initialize_driver())
 
         task_queue = Queue()
         for idx, item in enumerate(items, start=1):
