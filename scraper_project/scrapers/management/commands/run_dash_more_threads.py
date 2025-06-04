@@ -136,17 +136,16 @@ def initialize_driver(headless):
     chrome_opts.add_argument("--window-size=1920,1080")
     chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
 
-    # Indicar explícitamente el Chromium instalado por Nixpacks
     chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
     if chromium_path:
         chrome_opts.binary_location = chromium_path
-
-    # Apuntar al chromedriver que Nixpacks puso en PATH
-    chromedriver_path = shutil.which("chromedriver")
-    if chromedriver_path:
-        service = ChromeService(executable_path=chromedriver_path)
     else:
-        service = ChromeService()
+        raise RuntimeError("No se encontró 'chromium' en PATH; verifica tu .nixpacks.toml")
+
+    chromedriver_path = shutil.which("chromedriver")
+    if not chromedriver_path:
+        raise RuntimeError("No se encontró 'chromedriver' en PATH; verifica que Nixpacks lo instaló")
+    service = ChromeService(executable_path=chromedriver_path)
 
     driver = webdriver.Chrome(service=service, options=chrome_opts)
     driver.implicitly_wait(1)
