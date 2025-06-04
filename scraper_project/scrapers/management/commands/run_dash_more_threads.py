@@ -127,27 +127,26 @@ def extraer_cuotas_bancos(soup):
 
 
 def initialize_driver(headless):
-    chrome_opts = Options()
+    opts = Options()
     if headless:
-        chrome_opts.add_argument("--headless=new")
-    chrome_opts.add_argument("--no-sandbox")
-    chrome_opts.add_argument("--disable-dev-shm-usage")
-    chrome_opts.add_argument("--disable-gpu")
-    chrome_opts.add_argument("--window-size=1920,1080")
-    chrome_opts.add_argument("--blink-settings=imagesEnabled=false")
+        opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--blink-settings=imagesEnabled=false")
 
     chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
-    if chromium_path:
-        chrome_opts.binary_location = chromium_path
-    else:
+    if not chromium_path:
         raise RuntimeError("No se encontró 'chromium' en PATH; verifica tu .nixpacks.toml")
+    opts.binary_location = chromium_path
 
     chromedriver_path = shutil.which("chromedriver")
     if not chromedriver_path:
-        raise RuntimeError("No se encontró 'chromedriver' en PATH; verifica que Nixpacks lo instaló")
+        raise RuntimeError("No se encontró 'chromedriver' en PATH; verifica tu .nixpacks.toml")
     service = ChromeService(executable_path=chromedriver_path)
 
-    driver = webdriver.Chrome(service=service, options=chrome_opts)
+    driver = webdriver.Chrome(service=service, options=opts)
     driver.implicitly_wait(1)
     return driver
 
