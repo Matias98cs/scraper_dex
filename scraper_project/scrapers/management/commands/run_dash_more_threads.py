@@ -13,11 +13,21 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, JavascriptException
+from pathlib import Path
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-JSON_PATH   = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_20250530_124755_combinado.json"
-OUTPUT_JSON = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_more_threads_2.json"
+BASE_DIR = Path(settings.BASE_DIR)
+
+# JSON_PATH   = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_20250530_124755_combinado.json"
+# OUTPUT_JSON = "/Users/matiascampos/Anocuta/scraper_project/scraper_project/outputs/dash/productos_dash_more_threads_2.json"
+
+JSON_DIR = BASE_DIR / "json_pruebas"
+
+JSON_PATH   = JSON_DIR / "productos_dash_20250530_124755_combinado.json"
+OUTPUT_JSON = JSON_DIR / "dash_more_threads_1.json"
+
 MAX_THREADS = 4
 
 def scroll_page(driver):

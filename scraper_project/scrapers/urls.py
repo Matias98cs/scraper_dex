@@ -1,0 +1,10 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import test_connection, run_scraper_dash
+
+router = DefaultRouter()
+
+urlpatterns = [
+    path('test-connection/', test_connection, name='test-connection'),
+    path('run-scraper-dash/', run_scraper_dash, name='run-scraper-dash'),
+]
