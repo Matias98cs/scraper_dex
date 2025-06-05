@@ -18,6 +18,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, JavascriptException, WebDriverException
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+import threading, time
+
 
 from scrapers.utils import (
     setup_logger,
@@ -142,87 +145,134 @@ def worker(task_queue, driver_queue, resultados, lock, total, use_local):
             url = item.get("link", "")
             logger.info(f"[{tname}] [{idx}/{total}] Abriendo {url}")
 
+            # Intentamos navegar. Si falla al primer driver.get, capturamos aquí:
             try:
                 driver.get(url)
             except WebDriverException as e:
                 logger.error(f"[{tname}] [{idx}/{total}] Driver inválido (GET): {e}")
+
+                # Cerramos el driver “muerto” si existe
                 try:
                     driver.quit()
                 except Exception:
                     pass
                 driver = None
-                driver = initialize_driver_local() if use_local else initialize_driver_remote()
-                driver_queue.put(driver)
-                driver.get(url)
 
-            try:
-                WebDriverWait(driver, 10).until(
-                    lambda d: d.execute_script("return document.readyState") == "complete"
-                )
-            except (TimeoutException, WebDriverException):
-                logger.warning(f"[{tname}] [{idx}/{total}] Timeout esperando readyState")
+                # Ahora intentamos re‐crear el driver, PERO con timeout interno
+                def crear_driver():
+                    return initialize_driver_local() if use_local else initialize_driver_remote()
 
-            scroll_page(driver)
+                nuevo = None
+                # Usamos ThreadPoolExecutor sólo para imponer timeout al crear el driver
+                with ThreadPoolExecutor(max_workers=1) as ex:
+                    future = ex.submit(crear_driver)
+                    try:
+                        # Esperamos hasta 10 segundos por el initialize_driver
+                        nuevo = future.result(timeout=10)
+                    except Exception as ex_init:
+                        logger.error(f"[{tname}] [{idx}/{total}] No pude reinicializar el driver: {ex_init}")
+                        # Si falla o hace timeout, cancelamos la tarea
+                        future.cancel()
+                        nuevo = None
 
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
-                )
-            except (TimeoutException, WebDriverException):
-                logger.warning(f"[{tname}] [{idx}/{total}] Widget cuotas no apareció en 10s")
+                # Si pudimos instanciar un nuevo driver, lo ponemos en el pool; si no, 
+                # no podremos seguir con Selenium, pero al menos avanzamos:
+                if nuevo:
+                    driver_queue.put(nuevo)
+                    driver = nuevo
+                    try:
+                        driver.get(url)
+                    except WebDriverException as e2:
+                        logger.error(f"[{tname}] [{idx}/{total}] Segundo intento de GET falló: {e2}")
+                        # De nuevo, no insisto más: dejo driver “colgado” para que se cierre en finally
+                else:
+                    # Ya no tengo driver válido: dejo driver = None y sigo adelante
+                    driver = None
 
-            time.sleep(1)
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-
-            modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
-            try:
-                modelo       = extraer_modelo_id(soup)
-                disp, nodisp = extraer_talles(soup)
-                cuotas_bancos = extraer_cuotas_bancos(soup)
-            except Exception as e:
-                logger.warning(f"[{tname}] [{idx}/{total}] Error extrayendo datos: {e}")
-
-            num_wrappers = len(soup.select("div.dash-theme-6-x-wrapperModalCC"))
-            logger.info(f"[{tname}] [{idx}/{total}] Encontré {num_wrappers} wrappers en {url}")
-
-            item["modelo_id"]      = modelo
-            item["disponible"]     = disp
-            item["no_disponible"]  = nodisp
-            item["financiacion"]   = cuotas_bancos
-
-            logger.info(f"[{tname}] [{idx}/{total}] → Modelo: {modelo}")
-            logger.info(f"[{tname}] [{idx}/{total}] → Disponibles: {disp}")
-            logger.info(f"[{tname}] [{idx}/{total}] → No disponibles: {nodisp}")
-            logger.info(f"[{tname}] [{idx}/{total}] → Cuotas/Bancos: {cuotas_bancos}")
-
-            mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            logger.info(f"[{tname}] Item {idx} finalizado - Memoria final (KB): {mem_final}")
-
-        except WebDriverException as e:
-            logger.error(f"[{tname}] [{idx}/{total}] WebDriverException: {e}")
+            # Si llegamos hasta aquí (con o sin driver activo), seguimos intentando extraer
             if driver:
                 try:
-                    driver.quit()
-                except Exception:
-                    pass
-                driver = None
-            try:
-                nuevo = initialize_driver_local() if use_local else initialize_driver_remote()
-                driver_queue.put(nuevo)
-            except Exception as ex_init:
-                logger.error(f"[{tname}] [{idx}/{total}] Error reinicializando driver: {ex_init}")
+                    WebDriverWait(driver, 10).until(
+                        lambda d: d.execute_script("return document.readyState") == "complete"
+                    )
+                except (TimeoutException, WebDriverException):
+                    logger.warning(f"[{tname}] [{idx}/{total}] Timeout esperando readyState")
 
-            item["modelo_id"] = item.get("modelo_id", "N/A")
-            item["disponible"] = item.get("disponible", [])
+                scroll_page(driver)
+
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
+                    )
+                except (TimeoutException, WebDriverException):
+                    logger.warning(f"[{tname}] [{idx}/{total}] Widget cuotas no apareció en 10s")
+
+                time.sleep(1)
+                soup = BeautifulSoup(driver.page_source, "html.parser")
+
+                try:
+                    modelo = extraer_modelo_id(soup)
+                    disp, nodisp = extraer_talles(soup)
+                    cuotas_bancos = extraer_cuotas_bancos(soup)
+                except Exception as e:
+                    logger.warning(f"[{tname}] [{idx}/{total}] Error extrayendo datos: {e}")
+                    modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
+
+                num_wrappers = len(soup.select("div.dash-theme-6-x-wrapperModalCC"))
+                logger.info(f"[{tname}] [{idx}/{total}] Encontré {num_wrappers} wrappers en {url}")
+
+                item["modelo_id"]     = modelo
+                item["disponible"]    = disp
+                item["no_disponible"] = nodisp
+                item["financiacion"]  = cuotas_bancos
+
+                logger.info(f"[{tname}] [{idx}/{total}] → Modelo: {modelo}")
+                logger.info(f"[{tname}] [{idx}/{total}] → Disponibles: {disp}")
+                logger.info(f"[{tname}] [{idx}/{total}] → No disponibles: {nodisp}")
+                logger.info(f"[{tname}] [{idx}/{total}] → Cuotas/Bancos: {cuotas_bancos}")
+
+                mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                logger.info(f"[{tname}] Item {idx} finalizado - Memoria final (KB): {mem_final}")
+
+        except WebDriverException as e:
+            # Cualquier otro WebDriverException que surgiera fuera del primer get()—
+            # no quiero que cuelgue el hilo.  
+            logger.error(f"[{tname}] [{idx}/{total}] WebDriverException imprevisto: {e}")
+            try:
+                if driver:
+                    driver.quit()
+            except Exception:
+                pass
+            driver = None
+            # Reintento de inicializar, con el mismo patrón de timeout
+            def crear_driver():
+                return initialize_driver_local() if use_local else initialize_driver_remote()
+
+            nuevo = None
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(crear_driver)
+                try:
+                    nuevo = future.result(timeout=10)
+                except Exception as ex_init:
+                    logger.error(f"[{tname}] [{idx}/{total}] Error reinicializando driver: {ex_init}")
+                    future.cancel()
+                    nuevo = None
+
+            if nuevo:
+                driver_queue.put(nuevo)
+            # Luego sigo de todas formas para anexar item con defaults:
+            item["modelo_id"]     = item.get("modelo_id", "N/A")
+            item["disponible"]    = item.get("disponible", [])
             item["no_disponible"] = item.get("no_disponible", [])
-            item["financiacion"] = item.get("financiacion", [])
+            item["financiacion"]  = item.get("financiacion", [])
 
         except Exception as e:
             logger.error(f"[{tname}] [{idx}/{total}] Error inesperado: {e}")
-            item["modelo_id"] = item.get("modelo_id", "N/A")
-            item["disponible"] = item.get("disponible", [])
+            # Asigno defaults y continúo:
+            item["modelo_id"]     = item.get("modelo_id", "N/A")
+            item["disponible"]    = item.get("disponible", [])
             item["no_disponible"] = item.get("no_disponible", [])
-            item["financiacion"] = item.get("financiacion", [])
+            item["financiacion"]  = item.get("financiacion", [])
 
         finally:
             if driver:
