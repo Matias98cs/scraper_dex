@@ -71,11 +71,11 @@ def run_dash_more_threads(request):
     def _run():
         try:
             logger.info("Thread-RunDashMoreThreads: arrancando management command sin parámetros")
-            call_command("dash_more_threads")
+            call_command("run_dash_more_threads")
             time.sleep(1)
             logger.info("Thread-RunDashMoreThreads: el comando finalizó o tiró error")
         except Exception:
-            logger.exception("Hubo un error al ejecutar dash_more_threads")
+            logger.exception("Hubo un error al ejecutar run_dash_more_threads")
 
     t = threading.Thread(
         target=_run,
@@ -86,5 +86,5 @@ def run_dash_more_threads(request):
 
     return Response({
         'status': 'started',
-        'message': "Se ha disparado 'dash_more_threads' en background."
+        'message': "Se ha disparado 'run_dash_more_threads' en background."
     })
