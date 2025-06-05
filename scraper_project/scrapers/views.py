@@ -64,3 +64,27 @@ def run_scraper_dash(request):
         'local': local_execution,
         'message': 'Se ha disparado el scraper en background.'
     })
+
+
+@api_view(['POST'])
+def run_dash_more_threads(request):
+    def _run():
+        try:
+            logger.info("Thread-RunDashMoreThreads: arrancando management command sin parámetros")
+            call_command("dash_more_threads")
+            time.sleep(1)
+            logger.info("Thread-RunDashMoreThreads: el comando finalizó o tiró error")
+        except Exception:
+            logger.exception("Hubo un error al ejecutar dash_more_threads")
+
+    t = threading.Thread(
+        target=_run,
+        name="Thread-RunDashMoreThreads",
+        daemon=False
+    )
+    t.start()
+
+    return Response({
+        'status': 'started',
+        'message': "Se ha disparado 'dash_more_threads' en background."
+    })

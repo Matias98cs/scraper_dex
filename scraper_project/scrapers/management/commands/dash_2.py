@@ -18,9 +18,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, JavascriptException, WebDriverException
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
-import threading, time
-
 
 from scrapers.utils import (
     setup_logger,
@@ -44,7 +41,7 @@ def scroll_page(driver):
         )
         scroll_height = driver.execute_script("return document.body.scrollHeight")
         if not scroll_height:
-            logger.warning("No se obtuvo scrollHeight; saltando scroll.")
+            logger.warning("Error al desplazar la página: no se obtuvo scrollHeight; saltando scroll.")
             return
 
         for pct in range(0, 101, 15):
@@ -139,143 +136,143 @@ def worker(task_queue, driver_queue, resultados, lock, total, use_local):
         mem_inicial = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         logger.info(f"[{tname}] Inicio item {idx}/{total} - Memoria inicial (KB): {mem_inicial}")
 
-        driver = None
         try:
-            driver = driver_queue.get()
+            try:
+                driver = driver_queue.get(timeout=10)
+            except Empty:
+                logger.error(f"[{tname}] No se pudo obtener driver en 10s para ítem {idx}, lo marco como ERROR.")
+                item["modelo_id"]      = "ERROR_NO_DRIVER"
+                item["disponible"]     = []
+                item["no_disponible"]  = []
+                item["financiacion"]   = []
+                with lock:
+                    resultados.append(item)
+                task_queue.task_done()
+                return
+
             url = item.get("link", "")
             logger.info(f"[{tname}] [{idx}/{total}] Abriendo {url}")
-
-            # Intentamos navegar. Si falla al primer driver.get, capturamos aquí:
             try:
                 driver.get(url)
             except WebDriverException as e:
                 logger.error(f"[{tname}] [{idx}/{total}] Driver inválido (GET): {e}")
-
-                # Cerramos el driver “muerto” si existe
                 try:
                     driver.quit()
                 except Exception:
                     pass
                 driver = None
 
-                # Ahora intentamos re‐crear el driver, PERO con timeout interno
-                def crear_driver():
-                    return initialize_driver_local() if use_local else initialize_driver_remote()
-
-                nuevo = None
-                # Usamos ThreadPoolExecutor sólo para imponer timeout al crear el driver
-                with ThreadPoolExecutor(max_workers=1) as ex:
-                    future = ex.submit(crear_driver)
+                creado = False
+                for intento in range(2):
                     try:
-                        # Esperamos hasta 10 segundos por el initialize_driver
-                        nuevo = future.result(timeout=10)
+                        nuevo = initialize_driver_local() if use_local else initialize_driver_remote()
+                        driver_queue.put(nuevo)
+                        creado = True
+                        break
                     except Exception as ex_init:
-                        logger.error(f"[{tname}] [{idx}/{total}] No pude reinicializar el driver: {ex_init}")
-                        # Si falla o hace timeout, cancelamos la tarea
-                        future.cancel()
-                        nuevo = None
+                        logger.warning(f"[{tname}] Falló recrear driver (intento {intento+1}): {ex_init}")
+                        time.sleep(1)
 
-                # Si pudimos instanciar un nuevo driver, lo ponemos en el pool; si no, 
-                # no podremos seguir con Selenium, pero al menos avanzamos:
-                if nuevo:
-                    driver_queue.put(nuevo)
-                    driver = nuevo
-                    try:
-                        driver.get(url)
-                    except WebDriverException as e2:
-                        logger.error(f"[{tname}] [{idx}/{total}] Segundo intento de GET falló: {e2}")
-                        # De nuevo, no insisto más: dejo driver “colgado” para que se cierre en finally
-                else:
-                    # Ya no tengo driver válido: dejo driver = None y sigo adelante
-                    driver = None
+                if not creado:
+                    logger.error(f"[{tname}] No pude recrear driver tras 2 intentos, marco ítem {idx} como ERROR.")
+                    item["modelo_id"]      = "ERROR_INIT_DRIVER"
+                    item["disponible"]     = []
+                    item["no_disponible"]  = []
+                    item["financiacion"]   = []
+                    with lock:
+                        resultados.append(item)
+                    task_queue.task_done()
+                    return
+                driver = driver_queue.get(timeout=10)
+                driver.get(url)
 
-            # Si llegamos hasta aquí (con o sin driver activo), seguimos intentando extraer
-            if driver:
-                try:
-                    WebDriverWait(driver, 10).until(
-                        lambda d: d.execute_script("return document.readyState") == "complete"
-                    )
-                except (TimeoutException, WebDriverException):
-                    logger.warning(f"[{tname}] [{idx}/{total}] Timeout esperando readyState")
+            try:
+                WebDriverWait(driver, 10).until(
+                    lambda d: d.execute_script("return document.readyState") == "complete"
+                )
+            except (TimeoutException, WebDriverException):
+                logger.warning(f"[{tname}] [{idx}/{total}] Timeout esperando readyState")
 
-                scroll_page(driver)
+            scroll_page(driver)
 
-                try:
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
-                    )
-                except (TimeoutException, WebDriverException):
-                    logger.warning(f"[{tname}] [{idx}/{total}] Widget cuotas no apareció en 10s")
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.dash-theme-6-x-wrapperModalCC"))
+                )
+            except (TimeoutException, WebDriverException):
+                logger.warning(f"[{tname}] [{idx}/{total}] Widget cuotas no apareció en 10s")
 
-                time.sleep(1)
-                soup = BeautifulSoup(driver.page_source, "html.parser")
+            time.sleep(1)
+            soup = BeautifulSoup(driver.page_source, "html.parser")
 
-                try:
-                    modelo = extraer_modelo_id(soup)
-                    disp, nodisp = extraer_talles(soup)
-                    cuotas_bancos = extraer_cuotas_bancos(soup)
-                except Exception as e:
-                    logger.warning(f"[{tname}] [{idx}/{total}] Error extrayendo datos: {e}")
-                    modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
+            modelo, disp, nodisp, cuotas_bancos = "N/A", [], [], []
+            try:
+                modelo       = extraer_modelo_id(soup)
+                disp, nodisp = extraer_talles(soup)
+                cuotas_bancos = extraer_cuotas_bancos(soup)
+            except Exception as e:
+                logger.warning(f"[{tname}] [{idx}/{total}] Error extrayendo datos: {e}")
 
-                num_wrappers = len(soup.select("div.dash-theme-6-x-wrapperModalCC"))
-                logger.info(f"[{tname}] [{idx}/{total}] Encontré {num_wrappers} wrappers en {url}")
+            num_wrappers = len(soup.select("div.dash-theme-6-x-wrapperModalCC"))
+            logger.info(f"[{tname}] [{idx}/{total}] Encontré {num_wrappers} wrappers en {url}")
 
-                item["modelo_id"]     = modelo
-                item["disponible"]    = disp
-                item["no_disponible"] = nodisp
-                item["financiacion"]  = cuotas_bancos
+            item["modelo_id"]      = modelo
+            item["disponible"]     = disp
+            item["no_disponible"]  = nodisp
+            item["financiacion"]   = cuotas_bancos
 
-                logger.info(f"[{tname}] [{idx}/{total}] → Modelo: {modelo}")
-                logger.info(f"[{tname}] [{idx}/{total}] → Disponibles: {disp}")
-                logger.info(f"[{tname}] [{idx}/{total}] → No disponibles: {nodisp}")
-                logger.info(f"[{tname}] [{idx}/{total}] → Cuotas/Bancos: {cuotas_bancos}")
+            logger.info(f"[{tname}] [{idx}/{total}] → Modelo: {modelo}")
+            logger.info(f"[{tname}] [{idx}/{total}] → Disponibles: {disp}")
+            logger.info(f"[{tname}] [{idx}/{total}] → No disponibles: {nodisp}")
+            logger.info(f"[{tname}] [{idx}/{total}] → Cuotas/Bancos: {cuotas_bancos}")
 
-                mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                logger.info(f"[{tname}] Item {idx} finalizado - Memoria final (KB): {mem_final}")
+            mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            logger.info(f"[{tname}] Item {idx} finalizado - Memoria final (KB): {mem_final}")
 
         except WebDriverException as e:
-            # Cualquier otro WebDriverException que surgiera fuera del primer get()—
-            # no quiero que cuelgue el hilo.  
             logger.error(f"[{tname}] [{idx}/{total}] WebDriverException imprevisto: {e}")
             try:
-                if driver:
-                    driver.quit()
+                driver.quit()
             except Exception:
                 pass
-            driver = None
-            # Reintento de inicializar, con el mismo patrón de timeout
-            def crear_driver():
-                return initialize_driver_local() if use_local else initialize_driver_remote()
 
-            nuevo = None
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                future = ex.submit(crear_driver)
+            creado = False
+            for intento in range(2):
                 try:
-                    nuevo = future.result(timeout=10)
+                    nuevo = initialize_driver_local() if use_local else initialize_driver_remote()
+                    driver_queue.put(nuevo)
+                    creado = True
+                    break
                 except Exception as ex_init:
-                    logger.error(f"[{tname}] [{idx}/{total}] Error reinicializando driver: {ex_init}")
-                    future.cancel()
-                    nuevo = None
+                    logger.warning(f"[{tname}] Falló recrear driver (intento {intento+1}): {ex_init}")
+                    time.sleep(1)
 
-            if nuevo:
-                driver_queue.put(nuevo)
-            # Luego sigo de todas formas para anexar item con defaults:
-            item["modelo_id"]     = item.get("modelo_id", "N/A")
-            item["disponible"]    = item.get("disponible", [])
-            item["no_disponible"] = item.get("no_disponible", [])
-            item["financiacion"]  = item.get("financiacion", [])
+            if not creado:
+                logger.error(f"[{tname}] No pude recrear driver tras 2 intentos, marco ítem {idx} como ERROR.")
+                item["modelo_id"]      = "ERROR_INIT_DRIVER"
+                item["disponible"]     = []
+                item["no_disponible"]  = []
+                item["financiacion"]   = []
+                with lock:
+                    resultados.append(item)
+                task_queue.task_done()
+                return
+
+            driver = driver_queue.get(timeout=10)
+            try:
+                driver.get(item.get("link", ""))
+            except Exception:
+                pass
 
         except Exception as e:
             logger.error(f"[{tname}] [{idx}/{total}] Error inesperado: {e}")
-            # Asigno defaults y continúo:
-            item["modelo_id"]     = item.get("modelo_id", "N/A")
-            item["disponible"]    = item.get("disponible", [])
-            item["no_disponible"] = item.get("no_disponible", [])
-            item["financiacion"]  = item.get("financiacion", [])
+            item["modelo_id"]      = item.get("modelo_id", "N/A")
+            item["disponible"]     = item.get("disponible", [])
+            item["no_disponible"]  = item.get("no_disponible", [])
+            item["financiacion"]   = item.get("financiacion", [])
 
         finally:
-            if driver:
+            if 'driver' in locals() and driver:
                 try:
                     driver_queue.put(driver)
                 except Exception as e_put:
@@ -288,10 +285,22 @@ def worker(task_queue, driver_queue, resultados, lock, total, use_local):
             logger.info(f"[{tname}] Terminado item {idx}/{total}")
 
 def progress_reporter(total, resultados, stop_event):
+    last_count = -1
+    stagnation = 0
+
     while not stop_event.is_set():
         procesados = len(resultados)
-        porcentaje = (procesados / total) * 100 if total else 100
-        logger.info(f"Progreso: {procesados}/{total} ({porcentaje:.2f}%)")
+        if procesados != last_count:
+            porcentaje = (procesados / total) * 100 if total else 100
+            logger.info(f"Progreso: {procesados}/{total} ({porcentaje:.2f}%)")
+            last_count = procesados
+            stagnation = 0
+        else:
+            stagnation += 1
+            if stagnation % 3 == 0:
+                mins = (stagnation * PROGRESS_INTERVAL) // 60
+                segs = (stagnation * PROGRESS_INTERVAL) % 60
+                logger.warning(f"No hubo avance en los últimos {mins}m {segs}s; {procesados}/{total} sigue igual.")
         stop_event.wait(PROGRESS_INTERVAL)
 
 class Command(BaseCommand):
@@ -325,7 +334,7 @@ class Command(BaseCommand):
                 output_name = f"{output_name}.json"
         else:
             ahora = datetime.now()
-            fecha_hora = ahora.strftime("%d-%m-%Y-%H%M%S")
+            fecha_hora = ahora.strftime("%d-%m-%Y-%H%M")
             output_name = f"dash-{fecha_hora}.json"
 
         OUTPUT_PATH = JSON_DIR / output_name
@@ -338,11 +347,7 @@ class Command(BaseCommand):
             datefmt="%H:%M:%S"
         )
 
-        inicio_dt = datetime.now()
-        inicio_str = inicio_dt.strftime("%d-%m-%Y %H:%M:%S")
-        start_time = time.time()
-
-        logger.info(f"Fecha/hora de inicio: {inicio_str}")
+        inicio_total = datetime.now()
 
         try:
             with open(JSON_PATH, encoding="utf-8") as f:
@@ -404,26 +409,20 @@ class Command(BaseCommand):
             with open(OUTPUT_PATH, 'w', encoding='utf-8') as out_f:
                 json.dump(resultados, out_f, ensure_ascii=False, indent=2)
 
-            fin_dt = datetime.now()
-            fin_str = fin_dt.strftime("%d-%m-%Y %H:%M:%S")
-            end_time = time.time()
-            duration = end_time - start_time
-            duration_str = time.strftime("%H:%M:%S", time.gmtime(duration))
-
-            logger.info(f"Fecha/hora de finalización: {fin_str}")
-            logger.info(f"Duración total: {duration_str}")
-            logger.info(f"Resultados guardados en {OUTPUT_PATH}")
-            logger.info(f"Hilos activos al final: {threading.active_count()}")
+            fin_total = datetime.now()
+            duracion = fin_total - inicio_total
+            fecha_inicio = inicio_total.strftime("%d-%m-%Y %H:%M:%S")
+            fecha_fin = fin_total.strftime("%d-%m-%Y %H:%M:%S")
+            segundos = duracion.total_seconds()
+            logger.info(f"Inicio: {fecha_inicio} | Fin: {fecha_fin} | Duración total: {segundos:.2f} segundos")
 
             send_alert_message(
                 f"✅ Scraper completado: {len(resultados)}/{total} productos procesados.\n"
                 f"Archivo: {output_name}\n"
-                f"Inicio: {inicio_str}\n"
-                f"Fin: {fin_str}\n"
-                f"Duración: {duration_str}"
+                f"Inicio: {fecha_inicio} | Fin: {fecha_fin} | Duración: {segundos:.2f}s"
             )
 
         except Exception as e:
             logger.error(f"Fallo general del scraper: {e}")
-            send_alert_message(f"❌ Scraper producto por producto falló con error: {e}\nInicio: {inicio_str}")
+            send_alert_message(f"❌ Scraper producto por producto falló con error: {e}")
             raise

@@ -7,7 +7,6 @@ import resource
 from queue import Queue, Empty
 from django.core.management.base import BaseCommand
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -15,7 +14,9 @@ from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, JavascriptException
 from pathlib import Path
 from django.conf import settings
+from datetime import datetime
 import os
+from scrapers.utils import send_alert_message
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,10 @@ BASE_DIR = Path(settings.BASE_DIR)
 JSON_DIR = BASE_DIR / "json_pruebas"
 
 JSON_PATH   = JSON_DIR / "productos_dash_20250530_124755_combinado.json"
-OUTPUT_JSON = JSON_DIR / "dash_more_threads_1.json"
+OUTPUT_JSON = JSON_DIR / "dash_more_threads_2.json"
 
 MAX_THREADS = 4
+PROGRESS_INTERVAL = 30
 
 def scroll_page(driver):
     try:
@@ -44,14 +46,13 @@ def scroll_page(driver):
     except (TimeoutException, JavascriptException) as e:
         logger.warning(f"Error al desplazar la página: {e}")
 
+
 def extraer_modelo_id(soup):
-    # Primera opción: buscar en tabla con data-specification="Proveedor"
     cell = soup.find("td", {"data-specification": "Proveedor"})
     if cell:
         value = cell.find_next_sibling("td")
         if value:
             return value.get_text(strip=True)
-    # Si no, intentar extraer desde un div con descripción
     desc = soup.select_one("div.dash-theme-6-x-DescripcionProd div")
     if desc:
         text = desc.get_text(separator=" ", strip=True)
@@ -59,6 +60,7 @@ def extraer_modelo_id(soup):
         if m:
             return m.group(1)
     return "N/A"
+
 
 def extraer_talles(soup):
     disponibles, no_disponibles = [], []
@@ -74,6 +76,7 @@ def extraer_talles(soup):
             disponibles.append(talla)
     return disponibles, no_disponibles
 
+
 def extraer_cuotas_bancos(soup):
     resultados = []
     for wrapper in soup.select("div.dash-theme-6-x-wrapperModalCC"):
@@ -87,9 +90,7 @@ def extraer_cuotas_bancos(soup):
         if cuota_el:
             texto_cuota = cuota_el.get_text(strip=True)
 
-        num_cuotas       = None
-        precio_por_cuota = None
-        sin_interes      = None
+        num_cuotas, precio_por_cuota, sin_interes = None, None, None
 
         m1 = re.search(r"(\d+)\s+cuotas?", texto_cuota, re.IGNORECASE)
         if m1:
@@ -119,9 +120,10 @@ def extraer_cuotas_bancos(soup):
 
     return resultados
 
+
 def initialize_driver():
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.set_capability('browserless:token', os.environ['BROWSER_TOKEN'])
+    chrome_options.set_capability('browserless:token', os.environ.get('BROWSER_TOKEN', ''))
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-extensions")
@@ -129,11 +131,12 @@ def initialize_driver():
     chrome_options.add_argument("--no-sandbox")
 
     driver = webdriver.Remote(
-        command_executor=os.environ['BROWSER_WEBDRIVER_ENDPOINT'],
+        command_executor=os.environ.get('BROWSER_WEBDRIVER_ENDPOINT', ''),
         options=chrome_options
     )
     driver.implicitly_wait(1)
     return driver
+
 
 def worker(task_queue, driver_queue, resultados, lock, total):
     tname = threading.current_thread().name
@@ -145,8 +148,9 @@ def worker(task_queue, driver_queue, resultados, lock, total):
             return
 
         mem_inicial = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        logger.info(f"[{tname}] Uso de memoria al iniciar tarea para item {idx}/{total} (KB): {mem_inicial}")
+        logger.info(f"[{tname}] Uso de memoria al iniciar tarea {idx}/{total} (KB): {mem_inicial}")
 
+        driver = None
         try:
             driver = driver_queue.get()
             url = item.get("link", "")
@@ -195,7 +199,7 @@ def worker(task_queue, driver_queue, resultados, lock, total):
             logger.info(f"[{tname}] ----------------------------------------")
 
             mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            logger.info(f"[{tname}] Uso de memoria al finalizar item {idx} (KB): {mem_final}")
+            logger.info(f"[{tname}] Uso de memoria al finalizar {idx}/{total} (KB): {mem_final}")
 
         except Exception as e:
             logger.error(f"[{tname}] [{idx}/{total}] Error procesando {url}: {e}")
@@ -205,35 +209,47 @@ def worker(task_queue, driver_queue, resultados, lock, total):
             item["financiacion"]   = item.get("financiacion", [])
 
         finally:
+            if driver:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
             try:
-                driver_queue.put(driver)
-            except Exception:
-                pass
+                nuevo_driver = initialize_driver()
+                driver_queue.put(nuevo_driver)
+            except Exception as e_init:
+                logger.error(f"[{tname}] Error reinicializando driver: {e_init}")
 
             with lock:
                 resultados.append(item)
-
             task_queue.task_done()
+
             logger.info(f"[{tname}] Terminado procesamiento de item {idx}/{total}")
 
+
 class Command(BaseCommand):
-    help = 'Scraper Dash con pool de WebDrivers y threading optimizado'
+    help = 'Scraper Dash con pool de WebDrivers y threading manual'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--headless',
             action='store_true',
-            help='(Ignorado) - el driver siempre corre en headless'
+            help='Ignorado: el driver siempre corre en headless'
         )
 
     def handle(self, *args, **options):
+        headless = options['headless']
+
+        inicio = datetime.now()
+        logger.info(f"--- Scraper Dash iniciado en: {inicio.strftime('%Y-%m-%d %H:%M:%S')} ---")
+        send_alert_message(f"🚀 Scraper Dash iniciado en: {inicio.strftime('%Y-%m-%d %H:%M:%S')}")
+
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s [%(threadName)s] %(levelname)s %(message)s",
             datefmt="%H:%M:%S"
         )
 
-        # Cargo la lista de items desde JSON
         with open(JSON_PATH, encoding="utf-8") as f:
             items = json.load(f)
         total = len(items)
@@ -242,7 +258,10 @@ class Command(BaseCommand):
 
         driver_queue = Queue(maxsize=MAX_THREADS)
         for _ in range(MAX_THREADS):
-            driver_queue.put(initialize_driver())
+            try:
+                driver_queue.put(initialize_driver())
+            except Exception as e:
+                logger.error(f"Error al inicializar driver remoto: {e}")
 
         task_queue = Queue()
         for idx, item in enumerate(items, start=1):
@@ -261,7 +280,18 @@ class Command(BaseCommand):
             threads.append(t)
             t.start()
 
+        def progress_reporter():
+            while any(t.is_alive() for t in threads):
+                procesados = len(resultados)
+                porcentaje = (procesados / total) * 100 if total else 100
+                logger.info(f"Progreso: {procesados}/{total} ({porcentaje:.2f}%)")
+                time.sleep(PROGRESS_INTERVAL)
+
+        reporter_thread = threading.Thread(target=progress_reporter, name="ProgressReporter", daemon=True)
+        reporter_thread.start()
+
         task_queue.join()
+        reporter_thread.join(timeout=5)
 
         while not driver_queue.empty():
             try:
@@ -275,5 +305,14 @@ class Command(BaseCommand):
         with open(OUTPUT_JSON, 'w', encoding='utf-8') as out_f:
             json.dump(resultados, out_f, ensure_ascii=False, indent=2)
 
-        logger.info(f"Resultados guardados en {OUTPUT_JSON}")
+        fin = datetime.now()
+        duracion = fin - inicio
+        logger.info(f"--- Scraper Dash finalizado en: {fin.strftime('%Y-%m-%d %H:%M:%S')} ---")
+        logger.info(f"Duración total: {str(duracion)}")
+        send_alert_message(
+            f"✅ Scraper Dash completado en: {fin.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"⏱ Duración: {str(duracion)}\n"
+            f"📄 Resultados guardados en: {OUTPUT_JSON.name}"
+        )
+
         logger.info(f"Hilos activos al final: {threading.active_count()}")
