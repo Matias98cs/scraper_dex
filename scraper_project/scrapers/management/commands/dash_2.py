@@ -141,14 +141,18 @@ def worker(task_queue, driver_queue, resultados, lock, total, use_local):
                 driver = driver_queue.get(timeout=10)
             except Empty:
                 logger.error(f"[{tname}] No se pudo obtener driver en 10s para ítem {idx}, lo marco como ERROR.")
-                item["modelo_id"]      = "ERROR_NO_DRIVER"
+                send_alert_message(
+                    f"[{tname}] No se pudo obtener driver en 10s para ítem {idx}, lo marco como ERROR."
+                )
+                item["modelo_id"]      = ""
                 item["disponible"]     = []
                 item["no_disponible"]  = []
                 item["financiacion"]   = []
                 with lock:
                     resultados.append(item)
                 task_queue.task_done()
-                return
+
+                continue
 
             url = item.get("link", "")
             logger.info(f"[{tname}] [{idx}/{total}] Abriendo {url}")

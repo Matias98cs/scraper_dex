@@ -32,6 +32,7 @@ class Product(models.Model):
     link = models.URLField(max_length=500)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
+    provider_code = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         db_table = 'product'
@@ -98,3 +99,14 @@ class ProductSize(models.Model):
 
     class Meta:
         db_table = 'product_size'
+
+class CodesDexter(models.Model):
+    brand = models.CharField(max_length=100, null=True, blank=True)
+    provider_code = models.CharField(max_length=100, null=True, blank=True)
+    dexter_code = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta:
+        db_table = 'dexter_code'
+
+    def __str__(self):
+        return f"{self.brand} - {self.provider_code} - {self.dexter_code}"
