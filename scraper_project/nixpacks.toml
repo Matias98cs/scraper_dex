@@ -6,6 +6,7 @@ python                 = "*"
 chromium               = "*"
 chromium-chromedriver  = "*"
 gcc                    = "*"
+gcc-libs               = "*"
 
 [tool.nixpacks.phases.chromium]
 dependsOn = ["install"]
