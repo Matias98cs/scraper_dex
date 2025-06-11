@@ -102,7 +102,8 @@ ALLOWED_COMMANDS = {
     "import_productos_solodeportes": [],
     "import_productos_solourbano": [],
     "import_productos_stockcenter": [],
-    "import_productos_sporting": []
+    "import_productos_sporting": [],
+    "import_productos_sportline": [],
 }
 
 @api_view(['POST'])
