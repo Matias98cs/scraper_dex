@@ -5,6 +5,7 @@ start-command = "gunicorn scraper_project.wsgi:application --bind 0.0.0.0:$PORT"
 python                 = "*"
 chromium               = "*"
 chromium-chromedriver  = "*"
+libstdcxx              = "*"
 
 [tool.nixpacks.phases.chromium]
 dependsOn = ["install"]
