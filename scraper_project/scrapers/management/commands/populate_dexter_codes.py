@@ -3,6 +3,9 @@ import pandas as pd
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from scrapers.models import CodesDexter
+from scrapers.utils import (
+    send_alert_message,
+)
 
 class Command(BaseCommand):
     help = "Importa los codigos desde el Excel en dexter_codes/codigos_dexter.xlsx"
@@ -51,4 +54,5 @@ class Command(BaseCommand):
             )
             total += 1
 
+        send_alert_message(f"Importados {total} códigos para CodesDexter.")
         self.stdout.write(self.style.SUCCESS(f"✔️ Importados {total} códigos."))

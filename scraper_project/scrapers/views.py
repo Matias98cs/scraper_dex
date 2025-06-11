@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django.core.management import call_command
 import threading, logging
 import time
+from rest_framework import status
+from io import StringIO
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +90,41 @@ def run_dash_more_threads(request):
         'status': 'started',
         'message': "Se ha disparado 'run_dash_more_threads' en background."
     })
+
+
+
+ALLOWED_COMMANDS = {
+    "populate_dexter_codes": [],
+    "import_productos_dash": [],
+    "import_productos_dexter": [],
+    "import_productos_grid": [],
+    "import_productos_moov": [],
+    "import_productos_solodeportes": [],
+    "import_productos_solourbano": [],
+    "import_productos_stockcenter": [],
+    "import_productos_sporting": []
+}
+
+@api_view(['POST'])
+def run_management_command(request):
+    command = request.data.get('command')
+    extra_args = request.data.get('args', [])
+    if not command or command not in ALLOWED_COMMANDS:
+        return Response(
+            {"detail": "Comando no permitido"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    out = StringIO()
+    try:
+        call_command(command, *ALLOWED_COMMANDS[command], *extra_args, stdout=out)
+    except Exception as e:
+        return Response(
+            {"detail": f"Error ejecutando el comando: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return Response(
+        {"output": out.getvalue()},
+        status=status.HTTP_200_OK
+    )
